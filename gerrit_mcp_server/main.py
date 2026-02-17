@@ -1335,11 +1335,14 @@ async def get_circleci_status(
     return [{"type": "text", "text": output}]
 
 
-def cli_main(argv: List[str]):
+def cli_main(argv: Optional[List[str]] = None):
     """
     The main entry point for the command-line interface.
     This function is responsible for parsing arguments and running the server.
     """
+    if argv is None:
+        argv = sys.argv
+
     # If 'stdio' is an argument, run in stdio mode and bypass HTTP server logic.
     if "stdio" in argv:
         mcp.run(transport="stdio")
@@ -1366,6 +1369,6 @@ def cli_main(argv: List[str]):
 
 
 if __name__ == "__main__":
-    cli_main(sys.argv)
+    cli_main()
 
 app = mcp.streamable_http_app()

@@ -24,6 +24,9 @@ env = [
     "GERRIT_CONFIG_PATH=tests/test_config.json"
 ]
 
+[project.scripts]
+gerrit-mcp-server = "gerrit_mcp_server.main:cli_main"
+
 [tool.setuptools]
 packages = ["gerrit_mcp_server"]
 
