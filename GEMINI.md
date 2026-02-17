@@ -8,17 +8,17 @@ functions correctly. The following commands should be run from the root of the
 
 1.  **Set up the test environment and install dependencies (if not already done):**
     ```bash
-    ./build-gerrit.sh
+    python build.py
     ```
 2.  **Run the tests:**
     ```bash
-    ./test.sh
+    python run_tests.py
     ```
 
 This command will discover and run all tests in the `tests` directory.
 
 ### Making any changes to source
 
-If any changes to source are ever made, you must run `./test.sh` to validate
-that the changes did not break any tests. Ask the user first after any changes
-are made.
+If any changes to source are ever made, you must run `python run_tests.py` to
+validate that the changes did not break any tests. Ask the user first after any
+changes are made.

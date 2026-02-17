@@ -24,7 +24,7 @@ recommended for frequent use.
 1.  **Start the Server:**
     From the `gerrit-mcp-server` project directory, run:
     ```bash
-    ./server.sh start
+    python server.py start
     ```
 
 2.  **Configure Gemini CLI:**
@@ -47,10 +47,15 @@ recommended for frequent use.
 In STDIO mode, the Gemini CLI starts the MCP server on-demand for each request.
 This is useful if you don't want a server running in the background.
 
-**Configure Gemini CLI:** Add the following to your
-`$HOME/.gemini/settings.json` file. Make sure to replace `<path_to_project>`
-with the absolute path to your `gerrit-mcp-server` project directory.
+**Configure Gemini CLI:** Add the following to your Gemini settings file. Make
+sure to replace `<path_to_project>` with the absolute path to your
+`gerrit-mcp-server` project directory.
 
+*   **Settings file location:**
+    *   Linux / macOS: `$HOME/.gemini/settings.json`
+    *   Windows: `%USERPROFILE%\.gemini\settings.json`
+
+**Linux / macOS:**
 ```json
 {
   "mcpServers": {
@@ -62,6 +67,24 @@ with the absolute path to your `gerrit-mcp-server` project directory.
       ],
       "env": {
         "PYTHONPATH": "<path_to_project>/"
+      }
+    }
+  }
+}
+```
+
+**Windows:**
+```json
+{
+  "mcpServers": {
+    "gerrit": {
+      "command": "<path_to_project>\\.venv\\Scripts\\python.exe",
+      "args": [
+        "<path_to_project>\\gerrit_mcp_server\\main.py",
+        "stdio"
+      ],
+      "env": {
+        "PYTHONPATH": "<path_to_project>\\"
       }
     }
   }

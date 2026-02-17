@@ -36,7 +36,7 @@ This will create a Python virtual environment, install all dependencies, and
 make the server ready to run.
 
 ```bash
-./build-gerrit.sh
+python build.py
 ```
 
 ### 3. Configure the Server
@@ -47,25 +47,31 @@ You will need to create a `gerrit_config.json` file inside the
 environment. See the **[Configuration Guide](docs/configuration.md)** for
 details on all available options.
 
+**Linux / macOS:**
 ```bash
 cp gerrit_mcp_server/gerrit_config.sample.json gerrit_mcp_server/gerrit_config.json
 ```
 
+**Windows (PowerShell):**
+```powershell
+Copy-Item gerrit_mcp_server\gerrit_config.sample.json gerrit_mcp_server\gerrit_config.json
+```
+
 ### 4. Run the Server (HTTP Mode)
 
-To run the server as a persistent background process, use the `server.sh` script:
+To run the server as a persistent background process, use the `server.py` script:
 
 *   **Start the server:**
     ```bash
-    ./server.sh start
+    python server.py start
     ```
 *   **Check the status:**
     ```bash
-    ./server.sh status
+    python server.py status
     ```
 *   **Stop the server:**
     ```bash
-    ./server.sh stop
+    python server.py stop
     ```
 
 For on-demand STDIO mode, please see the **[Gemini CLI Setup Guide](docs/gemini-cli.md)**.

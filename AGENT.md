@@ -18,13 +18,19 @@ environment and installation of dependencies using `uv`.
 
 1.  **Run the build script:**
     ```bash
-    ./build-gerrit.sh
+    python build.py
     ```
     This will create a virtual environment in `.venv` and install all necessary dependencies.
 
 2.  **Activate the virtual environment:**
+
+    *Linux / macOS:*
     ```bash
     source .venv/bin/activate
+    ```
+    *Windows (PowerShell):*
+    ```powershell
+    .venv\Scripts\Activate.ps1
     ```
 
 > [!IMPORTANT]
@@ -48,7 +54,7 @@ We use **pytest** as our testing framework.
 Ensure your virtual environment is activated, then run:
 
 ```bash
-./test.sh
+python run_tests.py
 ```
 
 ## Runtime & Configuration

@@ -55,6 +55,7 @@ Gerrit will provide a script or commands to run that will configure your
 
 *   **`type`**: `"git_cookies"`
 *   **`gitcookies_path`**: The path to your `.gitcookies` file (e.g., `~/.gitcookies`).
+    On Windows, `~` expands to `%USERPROFILE%` (typically `C:\Users\<username>`).
 
 **Example:**
 ```json

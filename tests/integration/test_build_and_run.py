@@ -17,6 +17,7 @@ import tempfile
 import shutil
 import subprocess
 import os
+import sys
 import time
 import json
 
@@ -31,9 +32,10 @@ class TestBuildAndRun(unittest.TestCase):
 
         # Files and directories to copy to the temporary directory
         self.files_to_copy = [
-            "build-gerrit.sh",
+            "build.py",
             "pyproject.toml",
-            "server.sh",
+            "server.py",
+            "run_tests.py",
             "uv-requirements.txt",
         ]
         self.dirs_to_copy = ["gerrit_mcp_server"]
@@ -64,13 +66,15 @@ class TestBuildAndRun(unittest.TestCase):
         with open(gerrit_config_path, "w") as f:
             json.dump(dummy_config, f)
 
-        # Modify server.sh to use a different port for testing
-        server_script_path = os.path.join(self.test_dir.name, "server.sh")
+        # Modify server.py to use a different port for testing
+        server_script_path = os.path.join(self.test_dir.name, "server.py")
         with open(server_script_path, "r") as f:
             server_script_content = f.read()
 
         # Use a high, static port for testing to avoid conflicts
-        server_script_content = server_script_content.replace("6322", "8999")
+        server_script_content = server_script_content.replace(
+            'PORT = "6322"', 'PORT = "8999"'
+        )
 
         with open(server_script_path, "w") as f:
             f.write(server_script_content)
@@ -81,14 +85,12 @@ class TestBuildAndRun(unittest.TestCase):
 
     def test_build_and_run_server(self):
         """
-        Tests the full build and server run lifecycle using the server.sh script.
+        Tests the full build and server run lifecycle using the Python scripts.
         """
         # 1. Run the build script
-        build_script_path = os.path.join(self.test_dir.name, "build-gerrit.sh")
-        # We run the build script in an environment that reflects a user's clean shell,
-        # relying on the script's own checks to validate prerequisites.
+        build_script_path = os.path.join(self.test_dir.name, "build.py")
         build_process = subprocess.run(
-            ["bash", build_script_path],
+            [sys.executable, build_script_path],
             cwd=self.test_dir.name,
             capture_output=True,
             text=True,
@@ -104,18 +106,23 @@ class TestBuildAndRun(unittest.TestCase):
             os.path.exists(os.path.join(self.test_dir.name, "requirements.txt"))
         )
 
-        # 2. Run the server using server.sh
-        server_script_path = os.path.join(self.test_dir.name, "server.sh")
+        # 2. Run the server using server.py
+        server_script_path = os.path.join(self.test_dir.name, "server.py")
 
-        # The server script will use the newly created venv, so we don't need to modify the PATH for it.
         server_env = os.environ.copy()
         server_env["PYTHONPATH"] = self.test_dir.name
 
-        # Start the server
+        # Start the server with platform-aware process creation
+        popen_kwargs = {}
+        if sys.platform == "win32":
+            popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+        else:
+            popen_kwargs["preexec_fn"] = os.setsid
+
         start_process = subprocess.Popen(
-            ["bash", server_script_path, "start"],
+            [sys.executable, server_script_path, "start"],
             cwd=self.test_dir.name,
-            preexec_fn=os.setsid,
+            **popen_kwargs,
         )
         start_process.wait()
 
@@ -126,7 +133,7 @@ class TestBuildAndRun(unittest.TestCase):
                 with open(log_path, "r") as f:
                     log_content = f.read()
             self.fail(
-                f"server.sh start failed with exit code {start_process.returncode}.\n"
+                f"server.py start failed with exit code {start_process.returncode}.\n"
                 f"STDOUT:\n{start_process.stdout}\n"
                 f"STDERR:\n{start_process.stderr}\n"
                 f"SERVER LOG (server.log):\n{log_content}"
@@ -135,9 +142,9 @@ class TestBuildAndRun(unittest.TestCase):
         # Give the server a moment to start up
         time.sleep(2)
 
-        # 3. Verify the server is running with server.sh status
+        # 3. Verify the server is running with server.py status
         status_process = subprocess.run(
-            ["bash", server_script_path, "status"],
+            [sys.executable, server_script_path, "status"],
             cwd=self.test_dir.name,
             capture_output=True,
             text=True,
@@ -146,26 +153,26 @@ class TestBuildAndRun(unittest.TestCase):
         self.assertEqual(
             status_process.returncode,
             0,
-            f"server.sh status failed:\n{status_process.stderr}",
+            f"server.py status failed:\n{status_process.stderr}",
         )
         self.assertIn("Server is RUNNING", status_process.stdout)
 
         # 4. Stop the server
         stop_process = subprocess.run(
-            ["bash", server_script_path, "stop"],
+            [sys.executable, server_script_path, "stop"],
             cwd=self.test_dir.name,
             capture_output=True,
             text=True,
             env=server_env,
         )
         self.assertEqual(
-            stop_process.returncode, 0, f"server.sh stop failed:\n{stop_process.stderr}"
+            stop_process.returncode, 0, f"server.py stop failed:\n{stop_process.stderr}"
         )
         self.assertIn("Server stopped", stop_process.stdout)
 
         # 5. Verify the server is stopped
         status_after_stop_process = subprocess.run(
-            ["bash", server_script_path, "status"],
+            [sys.executable, server_script_path, "status"],
             cwd=self.test_dir.name,
             capture_output=True,
             text=True,
@@ -173,32 +180,28 @@ class TestBuildAndRun(unittest.TestCase):
         )
         self.assertIn("Server is STOPPED", status_after_stop_process.stdout)
 
-    def test_test_sh_fails_without_uv(self):
+    def test_run_tests_fails_on_broken_build(self):
         """
-        Tests that the test.sh script fails gracefully if 'uv' is not in the PATH.
+        Tests that run_tests.py fails gracefully when the build cannot complete.
         """
-        # Temporarily modify the PATH to exclude the directory containing 'uv'
-        original_path = os.environ["PATH"]
-        os.environ["PATH"] = ""
+        # Remove uv-requirements.txt so the build will fail at the uv install step
+        uv_req_path = os.path.join(self.test_dir.name, "uv-requirements.txt")
+        if os.path.exists(uv_req_path):
+            os.remove(uv_req_path)
 
-        try:
-            # Run the test script
-            test_script_path = os.path.join(self.project_root, "test.sh")
-            test_process = subprocess.run(
-                ["/bin/bash", test_script_path],
-                cwd=self.test_dir.name,
-                capture_output=True,
-                text=True,
-            )
+        test_script_path = os.path.join(self.test_dir.name, "run_tests.py")
+        test_process = subprocess.run(
+            [sys.executable, test_script_path],
+            cwd=self.test_dir.name,
+            capture_output=True,
+            text=True,
+        )
 
-            # Check that the script failed and printed the expected error message
-            self.assertNotEqual(
-                test_process.returncode, 0, "test.sh should fail when uv is not found"
-            )
-            self.assertIn("Failed to create virtual environment", test_process.stdout)
-        finally:
-            # Restore the original PATH
-            os.environ["PATH"] = original_path
+        self.assertNotEqual(
+            test_process.returncode,
+            0,
+            "run_tests.py should fail when build prerequisites are missing",
+        )
 
 
 if __name__ == "__main__":

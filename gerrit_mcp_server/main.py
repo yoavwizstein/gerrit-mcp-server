@@ -54,7 +54,7 @@ def load_gerrit_config() -> Dict[str, Any]:
             "Refer to the README.md for more details on the configuration options."
         )
     try:
-        with open(config_path, "r") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
             default_url = config.get("default_gerrit_base_url")
             if default_url:
@@ -85,10 +85,10 @@ def load_gerrit_config() -> Dict[str, Any]:
 
 
 try:
-    with open(PKG_PATH / "gerrit_details.json", "r") as f:
+    with open(PKG_PATH / "gerrit_details.json", "r", encoding="utf-8") as f:
         gerrit_details = json.load(f)
     # This file is not used in this implementation, but kept for pattern consistency
-    with open(PKG_PATH / "gerrit_command_argument_defs.json", "r") as f:
+    with open(PKG_PATH / "gerrit_command_argument_defs.json", "r", encoding="utf-8") as f:
         gerrit_arg_defs = json.load(f)
 except Exception as e:
     print(
@@ -169,7 +169,7 @@ async def run_curl(args: List[str], gerrit_base_url: str) -> str:
     """Executes a curl command and returns the output."""
     config = load_gerrit_config()
     command = get_curl_command_for_gerrit_url(gerrit_base_url, config) + args
-    with open(LOG_FILE_PATH, "a") as log_file:
+    with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
         log_file.write(f"[gerrit-mcp-server] Executing: {" ".join(command)}\n")
 
     process = await asyncio.create_subprocess_exec(
@@ -179,17 +179,17 @@ async def run_curl(args: List[str], gerrit_base_url: str) -> str:
     )
     stdout, stderr = await process.communicate()
 
-    stdout_str = stdout.decode()
-    stderr_str = stderr.decode()
+    stdout_str = stdout.decode("utf-8")
+    stderr_str = stderr.decode("utf-8")
 
-    with open(LOG_FILE_PATH, "a") as log_file:
+    with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
         log_file.write("[gerrit-mcp-server] curl command finished.\n")
         log_file.write(f"[gerrit-mcp-server] stdout:\n{stdout_str}\n")
         log_file.write(f"[gerrit-mcp-server] stderr:\n{stderr_str}\n")
 
     if process.returncode != 0:
         error_msg = f"curl command failed with exit code {process.returncode}.\nSTDERR:\n{stderr_str}"
-        with open(LOG_FILE_PATH, "a") as log_file:
+        with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
             log_file.write(f"[gerrit-mcp-server] {error_msg}\n")
         raise Exception(error_msg)
 
@@ -198,7 +198,7 @@ async def run_curl(args: List[str], gerrit_base_url: str) -> str:
     if stdout_str.startswith(")]}'"):
         stdout_str = stdout_str[4:]
 
-    with open(LOG_FILE_PATH, "a") as log_file:
+    with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
         log_file.write(f"[gerrit-mcp-server] JSON to parse:\n{stdout_str}\n")
 
     return stdout_str.strip()
@@ -439,7 +439,7 @@ async def get_commit_message(
             }
         ]
     except Exception as e:
-        with open(LOG_FILE_PATH, "a") as log_file:
+        with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
             log_file.write(
                 f"[gerrit-mcp-server] Error getting commit message for CL {change_id}: {e}\n"
             )
@@ -599,7 +599,7 @@ async def add_reviewer(
             }
         ]
     except Exception as e:
-        with open(LOG_FILE_PATH, "a") as log_file:
+        with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
             log_file.write(
                 f"[gerrit-mcp-server] Error adding reviewer to CL {change_id}: {e}\n"
             )
@@ -631,7 +631,7 @@ async def set_ready_for_review(
             ]
         return [{"type": "text", "text": f"CL {change_id} is now ready for review."}]
     except Exception as e:
-        with open(LOG_FILE_PATH, "a") as log_file:
+        with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
             log_file.write(
                 f"[gerrit-mcp-server] Error setting CL {change_id} as ready for review: {e}\n"
             )
@@ -665,7 +665,7 @@ async def set_work_in_progress(
             ]
         return [{"type": "text", "text": f"CL {change_id} is now a work-in-progress."}]
     except Exception as e:
-        with open(LOG_FILE_PATH, "a") as log_file:
+        with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
             log_file.write(
                 f"[gerrit-mcp-server] Error setting CL {change_id} as work-in-progress: {e}\n"
             )
@@ -713,7 +713,7 @@ async def revert_change(
             }
         ]
     except Exception as e:
-        with open(LOG_FILE_PATH, "a") as log_file:
+        with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
             log_file.write(f"[gerrit-mcp-server] Error reverting CL {change_id}: {e}\n")
         raise e
 
@@ -758,7 +758,7 @@ async def revert_submission(
             }
         ]
     except Exception as e:
-        with open(LOG_FILE_PATH, "a") as log_file:
+        with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
             log_file.write(
                 f"[gerrit-mcp-server] Error reverting submission for CL {change_id}: {e}\n"
             )
@@ -1070,7 +1070,7 @@ async def abandon_change(
             }
         ]
     except Exception as e:
-        with open(LOG_FILE_PATH, "a") as log_file:
+        with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
             log_file.write(
                 f"[gerrit-mcp-server] Error abandoning CL {change_id}: {e}\n"
             )
@@ -1199,12 +1199,140 @@ async def post_review_comment(
                 }
             ]
     except Exception as e:
-        with open(LOG_FILE_PATH, "a") as log_file:
+        with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
             log_file.write(
                 f"[gerrit-mcp-server] Error posting comment to CL {change_id}: {e}\n"
             )
         raise e
 
+
+
+def _format_job_duration(job: Dict[str, Any]) -> str:
+    """Formats a job's duration from started_at/stopped_at timestamps."""
+    started = job.get("started_at")
+    stopped = job.get("stopped_at")
+    if not started or not stopped:
+        return ""
+    try:
+        start_dt = datetime.datetime.fromisoformat(started.replace("Z", "+00:00"))
+        stop_dt = datetime.datetime.fromisoformat(stopped.replace("Z", "+00:00"))
+        seconds = int((stop_dt - start_dt).total_seconds())
+        if seconds < 60:
+            return f" ({seconds}s)"
+        return f" ({seconds // 60}m{seconds % 60:02d}s)"
+    except (ValueError, TypeError):
+        return ""
+
+
+def _build_circleci_job_url(workflow: Dict[str, Any], job: Dict[str, Any]) -> str:
+    """Builds the CircleCI job URL from workflow and job data."""
+    project_slug = workflow.get("project_slug", "")
+    pipeline_number = workflow.get("pipeline_number", "")
+    workflow_id = workflow.get("id", "")
+    job_number = job.get("job_number", "")
+    return (
+        f"https://app.circleci.com/pipelines/{project_slug}/{pipeline_number}"
+        f"/workflows/{workflow_id}/jobs/{job_number}"
+    )
+
+
+@mcp.tool()
+async def get_circleci_status(
+    change_id: str,
+    gerrit_base_url: Optional[str] = None,
+):
+    """
+    Retrieves CI check statuses for a CL from the Gerrit Checks Plugin.
+    Each check includes its state (SUCCESSFUL, FAILED, RUNNING, etc.) and
+    a URL linking to the CI result. Use state_filter='FAILED' to see only failures.
+    """
+    config = load_gerrit_config()
+    gerrit_hosts = config.get("gerrit_hosts", [])
+    base_url = _normalize_gerrit_url(_get_gerrit_base_url(gerrit_base_url), gerrit_hosts)
+
+    # Step 1: Fetch change details to get the full change_id, project, and branch
+    detail_url = f"{base_url}/changes/{change_id}"
+    try:
+        detail_json_str = await run_curl([detail_url], base_url)
+        details = json.loads(detail_json_str)
+    except Exception as e:
+        return [
+            {
+                "type": "text",
+                "text": f"Failed to fetch change details for CL {change_id}: {e}",
+            }
+        ]
+
+    gerrit_change_id = details.get("change_id", "")
+    project = details.get("project", "")
+    branch = details.get("branch", "")
+    cl_number = details.get("_number", change_id)
+
+    # Step 2: Call the CircleCI plugin status endpoint
+    status_url = (
+        f"{base_url}/plugins/circleci/status"
+        f"?changeId={quote(gerrit_change_id)}&branch={quote(branch)}&project={quote(project)}"
+    )
+    try:
+        status_json_str = await run_curl([status_url], base_url)
+        workflows = json.loads(status_json_str)
+    except json.JSONDecodeError:
+        return [
+            {
+                "type": "text",
+                "text": f"Failed to parse CircleCI status response for CL {cl_number}. "
+                "The CircleCI plugin may not be installed on this Gerrit instance.",
+            }
+        ]
+    except Exception as e:
+        error_str = str(e)
+        if "404" in error_str:
+            return [
+                {
+                    "type": "text",
+                    "text": f"No CircleCI status endpoint found for CL {cl_number}. "
+                    "The CircleCI plugin may not be installed on this Gerrit instance.",
+                }
+            ]
+        with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
+            log_file.write(
+                f"[gerrit-mcp-server] Error fetching CircleCI status for CL {cl_number}: {e}\n"
+            )
+        raise e
+
+    if not workflows:
+        return [
+            {
+                "type": "text",
+                "text": f"No CircleCI workflows found for CL {cl_number}.",
+            }
+        ]
+
+    output = f"CircleCI Status for CL {cl_number}:\n\n"
+    for workflow in workflows:
+        wf_name = workflow.get("name", "unknown")
+        wf_status = workflow.get("status", "unknown")
+        pipeline_num = workflow.get("pipeline_number", "")
+        output += f"[{wf_status.upper()}] {wf_name} (pipeline #{pipeline_num})\n"
+
+        for job in workflow.get("jobs", []):
+            job_name = job.get("name", "unknown")
+            job_status = job.get("status", "unknown")
+            duration = _format_job_duration(job)
+            output += f"  [{job_status}] {job_name}{duration}\n"
+            if job_status in ("failed", "infrastructure_fail", "timedout"):
+                output += f"    URL: {_build_circleci_job_url(workflow, job)}\n"
+
+        output += "\n"
+
+    status_counts: Dict[str, int] = {}
+    for workflow in workflows:
+        s = workflow.get("status", "unknown")
+        status_counts[s] = status_counts.get(s, 0) + 1
+    summary_parts = [f"{count} {status}" for status, count in sorted(status_counts.items())]
+    output += f"Summary: {', '.join(summary_parts)} ({len(workflows)} workflows)"
+
+    return [{"type": "text", "text": output}]
 
 
 def cli_main(argv: List[str]):

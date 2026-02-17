@@ -11,17 +11,28 @@ The easiest way to run the tests is to use `pytest` from the root of the project
     Run the build script to set up the virtual environment and install
     dependencies:
     ```bash
-    ./build-gerrit.sh
+    python build.py
     ```
 
 2.  **Activate Virtual Environment**:
+
+    *Linux / macOS:*
     ```bash
     source .venv/bin/activate
+    ```
+    *Windows (PowerShell):*
+    ```powershell
+    .venv\Scripts\Activate.ps1
     ```
 
 3.  **Run Tests**:
     ```bash
     pytest
+    ```
+    Or use the cross-platform test runner which handles venv activation and
+    config bootstrap automatically:
+    ```bash
+    python run_tests.py
     ```
 
 ## Test Structure
