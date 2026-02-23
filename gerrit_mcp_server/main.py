@@ -1210,6 +1210,9 @@ async def post_review_comment(
 ):
     """
     Posts a review comment on a specific line of a file in a CL.
+    To reply to an existing comment thread, first call list_change_comments
+    to find the id of the comment you want to reply to, then pass it as
+    in_reply_to. Without in_reply_to, the comment is posted as a new thread.
     """
     config = load_gerrit_config()
     gerrit_hosts = config.get("gerrit_hosts", [])
