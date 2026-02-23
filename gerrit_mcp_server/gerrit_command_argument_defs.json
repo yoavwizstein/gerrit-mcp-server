@@ -210,6 +210,11 @@
         "description": "The content of the comment.",
         "required": true
       },
+      "in_reply_to": {
+        "type": "string",
+        "description": "The UUID of the comment to reply to. Use list_change_comments to find comment IDs. When set, the comment is posted as a reply in the existing thread.",
+        "required": false
+      },
       "labels": {
         "type": "object",
         "description": "A dictionary of labels to apply to the review (e.g., {'Verified': 1})."

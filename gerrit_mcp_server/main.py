@@ -1203,6 +1203,7 @@ async def post_review_comment(
     file_path: str,
     line_number: int,
     message: str,
+    in_reply_to: Optional[str] = None,
     unresolved: bool = True,
     gerrit_base_url: Optional[str] = None,
     labels: Optional[Dict[str, int]] = None,
@@ -1217,16 +1218,16 @@ async def post_review_comment(
     )
     url = f"{base_url}/changes/{change_id}/revisions/current/review"
 
+    comment_input = {
+        "line": line_number,
+        "message": message,
+        "unresolved": unresolved,
+    }
+    if in_reply_to:
+        comment_input["in_reply_to"] = in_reply_to
+
     payload = {
-        "comments": {
-            file_path: [
-                {
-                    "line": line_number,
-                    "message": message,
-                    "unresolved": unresolved,
-                }
-            ]
-        },
+        "comments": {file_path: [comment_input]},
     }
     if labels:
         payload["labels"] = labels
