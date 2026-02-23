@@ -29,6 +29,7 @@ class TestListChangeComments(unittest.TestCase):
             mock_response = {
                 "src/main.py": [
                     {
+                        "id": "abc123",
                         "line": 10,
                         "author": {"name": "user1@example.com"},
                         "message": "This is a comment.",
@@ -36,6 +37,8 @@ class TestListChangeComments(unittest.TestCase):
                         "updated": "2025-07-15T10:00:00Z",
                     },
                     {
+                        "id": "def456",
+                        "in_reply_to": "abc123",
                         "line": 15,
                         "author": {"name": "user2@example.com"},
                         "message": "This is resolved.",
@@ -45,6 +48,7 @@ class TestListChangeComments(unittest.TestCase):
                 ],
                 "README.md": [
                     {
+                        "id": "ghi789",
                         "author": {"name": "user1@example.com"},
                         "message": "Another unresolved comment.",
                         "unresolved": True,
@@ -64,18 +68,18 @@ class TestListChangeComments(unittest.TestCase):
             self.assertIn("Comments for CL 11223", result[0]["text"])
             self.assertIn("File: src/main.py", result[0]["text"])
             self.assertIn(
-                "L10: [user1@example.com] (2025-07-15T10:00:00Z) - UNRESOLVED",
+                "L10 [id: abc123]: [user1@example.com] (2025-07-15T10:00:00Z) - UNRESOLVED",
                 result[0]["text"],
             )
             self.assertIn("This is a comment.", result[0]["text"])
             self.assertIn(
-                "L15: [user2@example.com] (2025-07-15T10:05:00Z) - RESOLVED",
+                "L15 [id: def456] (in_reply_to: abc123): [user2@example.com] (2025-07-15T10:05:00Z) - RESOLVED",
                 result[0]["text"],
             )
             self.assertIn("This is resolved.", result[0]["text"])
             self.assertIn("File: README.md", result[0]["text"])
             self.assertIn(
-                "LFile: [user1@example.com] (2025-07-15T10:10:00Z) - UNRESOLVED",
+                "LFile [id: ghi789]: [user1@example.com] (2025-07-15T10:10:00Z) - UNRESOLVED",
                 result[0]["text"],
             )
             self.assertIn("Another unresolved comment.", result[0]["text"])
@@ -90,6 +94,7 @@ class TestListChangeComments(unittest.TestCase):
             mock_response = {
                 "src/main.py": [
                     {
+                        "id": "xyz999",
                         "line": 15,
                         "author": {"name": "user2@example.com"},
                         "message": "This is resolved.",
@@ -109,7 +114,7 @@ class TestListChangeComments(unittest.TestCase):
             # Assert
             self.assertIn("Comments for CL 11223", result[0]["text"])
             self.assertIn(
-                "L15: [user2@example.com] (2025-07-15T10:05:00Z) - RESOLVED",
+                "L15 [id: xyz999]: [user2@example.com] (2025-07-15T10:05:00Z) - RESOLVED",
                 result[0]["text"],
             )
 
