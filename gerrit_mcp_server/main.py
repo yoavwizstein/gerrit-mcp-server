@@ -1266,6 +1266,153 @@ async def post_review_comment(
         raise e
 
 
+@mcp.tool()
+async def create_draft_comment(
+    change_id: str,
+    file_path: str,
+    line_number: int,
+    message: str,
+    in_reply_to: Optional[str] = None,
+    unresolved: bool = True,
+    gerrit_base_url: Optional[str] = None,
+):
+    """
+    Creates a draft comment on a specific line of a file in a CL.
+    Draft comments are private to the calling user and are NOT visible
+    to others until published via publish_draft_comments.
+    """
+    config = load_gerrit_config()
+    gerrit_hosts = config.get("gerrit_hosts", [])
+    base_url = _normalize_gerrit_url(
+        _get_gerrit_base_url(gerrit_base_url), gerrit_hosts
+    )
+    url = f"{base_url}/changes/{change_id}/revisions/current/drafts"
+
+    payload = {
+        "path": file_path,
+        "line": line_number,
+        "message": message,
+        "unresolved": unresolved,
+    }
+    if in_reply_to:
+        payload["in_reply_to"] = in_reply_to
+
+    args = _create_put_args(url, payload)
+
+    try:
+        result_str = await run_curl(args, base_url)
+        draft_info = json.loads(result_str)
+        draft_id = draft_info.get("id", "unknown")
+        return [
+            {
+                "type": "text",
+                "text": (
+                    f"Created draft comment on CL {change_id}, "
+                    f"file {file_path} at line {line_number}. "
+                    f"Draft ID: {draft_id}"
+                ),
+            }
+        ]
+    except Exception as e:
+        with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
+            log_file.write(
+                f"[gerrit-mcp-server] Error creating draft on CL {change_id}: {e}\n"
+            )
+        raise e
+
+
+@mcp.tool()
+async def list_draft_comments(
+    change_id: str,
+    gerrit_base_url: Optional[str] = None,
+):
+    """
+    Lists all draft comments for a CL that belong to the calling user.
+    """
+    config = load_gerrit_config()
+    gerrit_hosts = config.get("gerrit_hosts", [])
+    base_url = _normalize_gerrit_url(
+        _get_gerrit_base_url(gerrit_base_url), gerrit_hosts
+    )
+    url = f"{base_url}/changes/{change_id}/drafts"
+
+    try:
+        result_str = await run_curl([url], base_url)
+        drafts_by_file = json.loads(result_str)
+
+        if not drafts_by_file:
+            return [
+                {
+                    "type": "text",
+                    "text": f"No draft comments found for CL {change_id}.",
+                }
+            ]
+
+        output = f"Draft comments for CL {change_id}:\n"
+        for fp, drafts in drafts_by_file.items():
+            output += f"---\nFile: {fp}\n"
+            for draft in drafts:
+                line = draft.get("line", "File")
+                draft_id = draft.get("id", "unknown")
+                msg = draft.get("message", "")
+                unresolved = draft.get("unresolved", True)
+                output += (
+                    f"  L{line} [ID: {draft_id}] (unresolved={unresolved}): {msg}\n"
+                )
+
+        return [{"type": "text", "text": output}]
+    except Exception as e:
+        with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
+            log_file.write(
+                f"[gerrit-mcp-server] Error listing drafts for CL {change_id}: {e}\n"
+            )
+        raise e
+
+
+@mcp.tool()
+async def publish_draft_comments(
+    change_id: str,
+    message: Optional[str] = None,
+    labels: Optional[Dict[str, int]] = None,
+    gerrit_base_url: Optional[str] = None,
+):
+    """
+    Publishes all pending draft comments on the current revision of a CL.
+    Optionally adds a top-level review message and/or sets labels.
+    """
+    config = load_gerrit_config()
+    gerrit_hosts = config.get("gerrit_hosts", [])
+    base_url = _normalize_gerrit_url(
+        _get_gerrit_base_url(gerrit_base_url), gerrit_hosts
+    )
+    url = f"{base_url}/changes/{change_id}/revisions/current/review"
+
+    payload: Dict[str, Any] = {
+        "drafts": "PUBLISH_ALL_REVISIONS",
+    }
+    if message:
+        payload["message"] = message
+    if labels:
+        payload["labels"] = labels
+
+    args = _create_post_args(url, payload)
+
+    try:
+        result_str = await run_curl(args, base_url)
+        return [
+            {
+                "type": "text",
+                "text": f"Successfully published draft comments on CL {change_id}.",
+            }
+        ]
+    except Exception as e:
+        with open(LOG_FILE_PATH, "a", encoding="utf-8") as log_file:
+            log_file.write(
+                f"[gerrit-mcp-server] Error publishing drafts on CL {change_id}: {e}\n"
+            )
+        raise e
+
+
 def _format_job_duration(job: Dict[str, Any]) -> str:
     """Formats a job's duration from started_at/stopped_at timestamps."""
     started = job.get("started_at")
