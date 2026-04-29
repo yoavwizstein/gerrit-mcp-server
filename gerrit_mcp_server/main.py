@@ -576,6 +576,121 @@ async def list_change_comments(change_id: str, gerrit_base_url: Optional[str] = 
     return [{"type": "text", "text": output}]
 
 
+def _group_comments_into_threads(
+    comments: List[Dict[str, Any]],
+) -> List[List[Dict[str, Any]]]:
+    """Groups comments into threads keyed by their root comment id.
+
+    A thread is a chain of comments connected via `in_reply_to`. Comments
+    within a thread are sorted by their `updated` timestamp so the latest
+    one is last.
+    """
+    by_id = {c["id"]: c for c in comments if "id" in c}
+
+    def find_root(comment_id: str) -> str:
+        seen = set()
+        current = comment_id
+        while current in by_id and current not in seen:
+            seen.add(current)
+            parent_id = by_id[current].get("in_reply_to")
+            if not parent_id or parent_id not in by_id:
+                return current
+            current = parent_id
+        return current
+
+    threads: Dict[str, List[Dict[str, Any]]] = {}
+    for comment in comments:
+        if "id" not in comment:
+            # Defensive: comments without an id are treated as their own thread.
+            threads.setdefault(id(comment), []).append(comment)
+            continue
+        root_id = find_root(comment["id"])
+        threads.setdefault(root_id, []).append(comment)
+
+    for thread in threads.values():
+        thread.sort(key=lambda c: c.get("updated", ""))
+
+    return list(threads.values())
+
+
+def _is_thread_unresolved(thread: List[Dict[str, Any]]) -> bool:
+    """A thread is unresolved iff its most recent comment is marked unresolved.
+
+    This matches Gerrit's UI semantics: a reply with `unresolved=False`
+    closes a previously-open thread, and vice versa.
+    """
+    if not thread:
+        return False
+    return bool(thread[-1].get("unresolved", False))
+
+
+@mcp.tool()
+async def list_unresolved_comments(
+    change_id: str, gerrit_base_url: Optional[str] = None
+):
+    """
+    Lists only the unresolved comment threads for a CL. A thread is considered
+    unresolved when its most recent comment is marked unresolved (matching
+    Gerrit's UI). Prefer this over list_change_comments on large CLs to avoid
+    drowning in resolved feedback. The full thread (including any resolved
+    replies) is included so context is preserved.
+    """
+    config = load_gerrit_config()
+    gerrit_hosts = config.get("gerrit_hosts", [])
+    base_url = _normalize_gerrit_url(
+        _get_gerrit_base_url(gerrit_base_url), gerrit_hosts
+    )
+    url = f"{base_url}/changes/{change_id}/comments"
+    result_json_str = await run_curl([url], base_url)
+    try:
+        comments_by_file = json.loads(result_json_str)
+    except json.JSONDecodeError:
+        return [
+            {
+                "type": "text",
+                "text": f"Failed to parse JSON response from Gerrit. Raw response:\n{result_json_str}",
+            }
+        ]
+
+    output = f"Unresolved comments for CL {change_id}:\n"
+    found_unresolved = False
+    for file_path, comments in comments_by_file.items():
+        threads = _group_comments_into_threads(comments)
+        unresolved_threads = [t for t in threads if _is_thread_unresolved(t)]
+        if not unresolved_threads:
+            continue
+
+        output += f"---\nFile: {file_path}\n"
+        found_unresolved = True
+        for thread in unresolved_threads:
+            for comment in thread:
+                comment_id = comment.get("id", "")
+                in_reply_to = comment.get("in_reply_to", "")
+                line = comment.get("line", "File")
+                author = comment.get("author", {}).get("name", "Unknown")
+                timestamp = comment.get("updated", "No date")
+                message = comment["message"]
+                status = (
+                    "UNRESOLVED" if comment.get("unresolved", False) else "RESOLVED"
+                )
+                id_info = f" [id: {comment_id}]" if comment_id else ""
+                reply_info = f" (in_reply_to: {in_reply_to})" if in_reply_to else ""
+                output += (
+                    f"L{line}{id_info}{reply_info}: [{author}] ({timestamp}) - {status}\n"
+                )
+                output += f"  {message}\n"
+
+    if not found_unresolved:
+        return [
+            {
+                "type": "text",
+                "text": f"No unresolved comments for CL {change_id}.",
+            }
+        ]
+
+    return [{"type": "text", "text": output}]
+
+
 @mcp.tool()
 async def add_reviewer(
     change_id: str,

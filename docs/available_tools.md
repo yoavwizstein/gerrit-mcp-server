@@ -19,6 +19,10 @@ This document lists the tools available in the Gerrit MCP Server, extracted from
 -   **list_change_comments**: list_change_comments is useful for reviewing
     feedback, reading comments on a change, analyzing comments, and responding
     to comments.
+-   **list_unresolved_comments**: Lists only the unresolved comment threads
+    for a CL (a thread is unresolved when its most recent comment is marked
+    unresolved, matching Gerrit's UI). Prefer this over `list_change_comments`
+    on large CLs to avoid noise from resolved feedback.
 -   **add_reviewer**: Adds a user or a group to a CL as either a reviewer or a
     CC.
 -   **set_ready_for_review**: Sets a CL as ready for review.

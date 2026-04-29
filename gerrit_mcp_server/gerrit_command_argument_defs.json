@@ -109,6 +109,21 @@
       }
     }
   },
+  "list_unresolved_comments": {
+    "description": "Fetches only the unresolved comment threads for a CL. Prefer this over list_change_comments on large CLs to cut noise from already-resolved feedback. Each unresolved thread is returned with its full reply chain so context is preserved.",
+    "parameters": {
+      "gerrit_base_url": {
+        "type": "string",
+        "description": "The base URL of the Gerrit instance. This is configured via the gerrit_config.json file or the GERRIT_BASE_URL environment variable.",
+        "required": false
+      },
+      "change_id": {
+        "type": "string",
+        "description": "The numeric change ID.",
+        "required": true
+      }
+    }
+  },
   "add_reviewer": {
     "description": "Adds a user or a group to a CL as either a reviewer or a CC.",
     "parameters": {
