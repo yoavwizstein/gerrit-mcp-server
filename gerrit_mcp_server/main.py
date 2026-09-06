@@ -1337,10 +1337,15 @@ async def post_review_comment(
     url = f"{base_url}/changes/{change_id}/revisions/current/review"
 
     comment_input = {
-        "line": line_number,
         "message": message,
         "unresolved": unresolved,
     }
+    # Gerrit's magic /PATCHSET_LEVEL path is a change-wide comment and must
+    # not carry `line` or `range`. For regular files, only include `line`
+    # when it refers to an actual line (>=1); `line: 0` is not a valid
+    # file-level comment representation for Gerrit.
+    if file_path != "/PATCHSET_LEVEL" and line_number and line_number > 0:
+        comment_input["line"] = line_number
     if in_reply_to:
         comment_input["in_reply_to"] = in_reply_to
 
@@ -1405,10 +1410,15 @@ async def create_draft_comment(
 
     payload = {
         "path": file_path,
-        "line": line_number,
         "message": message,
         "unresolved": unresolved,
     }
+    # Gerrit's magic /PATCHSET_LEVEL path is a change-wide comment and must
+    # not carry `line` or `range`. For regular files, only include `line`
+    # when it refers to an actual line (>=1); `line: 0` is not a valid
+    # file-level comment representation for Gerrit.
+    if file_path != "/PATCHSET_LEVEL" and line_number and line_number > 0:
+        payload["line"] = line_number
     if in_reply_to:
         payload["in_reply_to"] = in_reply_to
 
